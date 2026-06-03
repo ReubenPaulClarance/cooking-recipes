@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Cooking Recipes</title>
+    <title>Shared Recipes</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body data-page="local">
+<body data-page="shared">
     <div class="container">
         <header>
             <div class="banner">
@@ -19,18 +19,17 @@
                 type="text" 
                 id="searchInput" 
                 class="search-bar" 
-                placeholder="Search recipes by name or ingredients..."
+                placeholder="Search shared recipes by name or ingredients..."
             >
         </div>
 
         <div class="action-section">
-            <button id="addRecipeBtn" class="btn btn-primary">+ Add Recipe</button>
-            <button id="importRecipeBtn" class="btn btn-secondary">Import Shared Recipe</button>
-            <a href="shared.html" class="btn btn-secondary">View Imported Recipes</a>
+            <a href="index.html" class="btn btn-secondary">← My Recipes</a>
+            <button id="importRecipeBtn" class="btn btn-primary">Import Shared Recipe</button>
         </div>
 
         <div id="recipesList" class="recipes-grid">
-            <p class="empty-state">No recipes yet. Add one to get started!</p>
+            <p class="empty-state">No shared recipes yet. Import one to get started!</p>
         </div>
     </div>
 
@@ -56,18 +55,6 @@
                 <div class="form-group">
                     <label for="instructions">Instructions *</label>
                     <textarea id="instructions" placeholder="Enter cooking instructions" required></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label for="dishType">Dish Type</label>
-                    <select id="dishType">
-                        <option value="breakfast">Breakfast</option>
-                        <option value="lunch">Lunch</option>
-                        <option value="dinner">Dinner</option>
-                        <option value="snack">Snack</option>
-                        <option value="dessert">Dessert</option>
-                        <option value="other">Other</option>
-                    </select>
                 </div>
 
                 <div class="form-group">

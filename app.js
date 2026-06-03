@@ -52,6 +52,34 @@ class RecipeManager {
         );
     }
 
+    normalizeText(text) {
+        return (text || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    isSameRecipe(recipeA, recipeB) {
+        return this.normalizeText(recipeA.name) === this.normalizeText(recipeB.name)
+            && this.normalizeText(recipeA.ingredients) === this.normalizeText(recipeB.ingredients);
+    }
+
+    findDuplicateRecipe(newRecipe, skipId = null) {
+        return this.recipes.find(recipe => {
+            if (skipId && recipe.id === skipId) {
+                return false;
+            }
+            return this.isSameRecipe(recipe, newRecipe);
+        });
+    }
+
+    findRecipesByTitle(title, skipId = null) {
+        const normalizedTitle = this.normalizeText(title);
+        return this.recipes.filter(recipe => {
+            if (skipId && recipe.id === skipId) {
+                return false;
+            }
+            return this.normalizeText(recipe.name) === normalizedTitle;
+        });
+    }
+
     getAllRecipes() {
         return this.recipes;
     }
@@ -62,6 +90,8 @@ class UIManager {
     constructor(recipeManager) {
         this.recipeManager = recipeManager;
         this.currentEditingId = null;
+        this.currentPhotoData = '';
+        this.pageMode = document.body.dataset.page || 'local';
         this.initializeElements();
         this.attachEventListeners();
         this.render();
@@ -80,7 +110,14 @@ class UIManager {
         this.closeDetailBtn = document.getElementById('closeDetailBtn');
         this.closeDetailBtnBottom = document.getElementById('closeDetailBtnBottom');
         this.editRecipeBtn = document.getElementById('editRecipeBtn');
+        this.shareRecipeBtn = document.getElementById('shareRecipeBtn');
         this.deleteRecipeBtn = document.getElementById('deleteRecipeBtn');
+        this.importRecipeBtn = document.getElementById('importRecipeBtn');
+        this.importModal = document.getElementById('importModal');
+        this.closeImportBtn = document.getElementById('closeImportBtn');
+        this.cancelImportBtn = document.getElementById('cancelImportBtn');
+        this.importRecipeSubmitBtn = document.getElementById('importRecipeSubmitBtn');
+        this.importText = document.getElementById('importText');
 
         // Form inputs
         this.recipeName = document.getElementById('recipeName');
@@ -90,10 +127,18 @@ class UIManager {
         this.cookTime = document.getElementById('cookTime');
         this.servings = document.getElementById('servings');
         this.difficulty = document.getElementById('difficulty');
+        this.dishType = document.getElementById('dishType');
+        this.vegetarian = document.getElementById('vegetarian');
+        this.recipePhoto = document.getElementById('recipePhoto');
+        this.generatePhotoBtn = document.getElementById('generatePhotoBtn');
+        this.photoPreview = document.getElementById('photoPreview');
+        this.formError = document.getElementById('formError');
 
         // Search
         this.searchInput = document.getElementById('searchInput');
         this.recipesList = document.getElementById('recipesList');
+        this.recipePhoto = document.getElementById('recipePhoto');
+        this.photoPreview = document.getElementById('photoPreview');
 
         // Modal titles
         this.modalTitle = document.getElementById('modalTitle');
@@ -103,7 +148,9 @@ class UIManager {
 
     attachEventListeners() {
         // Modal controls
-        this.addRecipeBtn.addEventListener('click', () => this.openAddModal());
+        if (this.addRecipeBtn) {
+            this.addRecipeBtn.addEventListener('click', () => this.openAddModal());
+        }
         this.closeModalBtn.addEventListener('click', () => this.closeModal());
         this.cancelBtn.addEventListener('click', () => this.closeModal());
         this.closeDetailBtn.addEventListener('click', () => this.closeDetailModal());
@@ -115,14 +162,28 @@ class UIManager {
         // Search
         this.searchInput.addEventListener('input', (e) => this.handleSearch(e));
 
-        // Edit and Delete
+        // Edit, Share, and Import
         this.editRecipeBtn.addEventListener('click', () => this.openEditModal());
+        this.shareRecipeBtn.addEventListener('click', () => this.shareRecipe());
         this.deleteRecipeBtn.addEventListener('click', () => this.handleDelete());
+        if (this.importRecipeBtn) {
+            this.importRecipeBtn.addEventListener('click', () => this.openImportModal());
+        }
+        if (this.recipePhoto) {
+            this.recipePhoto.addEventListener('change', (e) => this.handlePhotoUpload(e));
+        }
+        if (this.generatePhotoBtn) {
+            this.generatePhotoBtn.addEventListener('click', () => this.generateRecipePhoto());
+        }
+        this.closeImportBtn.addEventListener('click', () => this.closeImportModal());
+        this.cancelImportBtn.addEventListener('click', () => this.closeImportModal());
+        this.importRecipeSubmitBtn.addEventListener('click', () => this.handleImportRecipe());
 
         // Close modals when clicking outside
         window.addEventListener('click', (e) => {
             if (e.target === this.recipeModal) this.closeModal();
             if (e.target === this.detailModal) this.closeDetailModal();
+            if (e.target === this.importModal) this.closeImportModal();
         });
     }
 
@@ -158,6 +219,14 @@ class UIManager {
     resetForm() {
         this.recipeForm.reset();
         this.servings.value = '4';
+        this.difficulty.value = 'medium';
+        this.dishType.value = 'breakfast';
+        this.vegetarian.checked = false;
+        this.currentPhotoData = '';
+        if (this.photoPreview) {
+            this.photoPreview.innerHTML = '';
+        }
+        this.clearFormError();
     }
 
     populateForm(recipe) {
@@ -168,11 +237,22 @@ class UIManager {
         this.cookTime.value = recipe.cookTime || '';
         this.servings.value = recipe.servings || '4';
         this.difficulty.value = recipe.difficulty || 'medium';
+        this.dishType.value = recipe.dishType || 'breakfast';
+        this.vegetarian.checked = recipe.vegetarian || false;
+        this.currentPhotoData = recipe.photo || '';
+        if (this.photoPreview) {
+            this.photoPreview.innerHTML = recipe.photo
+                ? `<img src="${recipe.photo}" alt="${this.escapeHtml(recipe.name)} photo">`
+                : '';
+        }
     }
 
     handleFormSubmit(e) {
         e.preventDefault();
 
+        const existingPhoto = this.currentEditingId
+            ? this.recipeManager.getRecipe(this.currentEditingId)?.photo || ''
+            : '';
         const recipeData = {
             name: this.recipeName.value,
             ingredients: this.ingredients.value,
@@ -180,8 +260,40 @@ class UIManager {
             prepTime: this.prepTime.value ? parseInt(this.prepTime.value) : 0,
             cookTime: this.cookTime.value ? parseInt(this.cookTime.value) : 0,
             servings: parseInt(this.servings.value),
-            difficulty: this.difficulty.value
+            difficulty: this.difficulty.value,
+            dishType: this.dishType.value || 'breakfast',
+            vegetarian: this.vegetarian.checked,
+            photo: this.currentPhotoData || existingPhoto,
+            source: 'local'
         };
+
+        const existingExactMatch = this.recipeManager.findDuplicateRecipe(recipeData, this.currentEditingId);
+        if (existingExactMatch) {
+            this.showFormError('A recipe with the same name and ingredients already exists.');
+            return;
+        }
+
+        const titleMatches = this.recipeManager.findRecipesByTitle(recipeData.name, this.currentEditingId);
+        const distinctTitleMatches = titleMatches.filter(recipe => !this.recipeManager.isSameRecipe(recipe, recipeData));
+        if (titleMatches.length > 0 && distinctTitleMatches.length === 0) {
+            this.showFormError('A recipe with the same title and ingredients already exists.');
+            return;
+        }
+
+        if (distinctTitleMatches.length > 0) {
+            const existingText = distinctTitleMatches.map((recipe, index) => {
+                const ingredients = recipe.ingredients.split('\n').map(i => i.trim()).filter(Boolean).join(', ');
+                return `Existing Recipe ${index + 1}:\nIngredients: ${ingredients}\nInstructions: ${recipe.instructions.trim().slice(0, 120)}${recipe.instructions.length > 120 ? '...' : ''}`;
+            }).join('\n\n');
+
+            const currentIngredients = this.ingredients.value.split('\n').map(i => i.trim()).filter(Boolean).join(', ');
+            const currentInstructions = this.instructions.value.trim().slice(0, 120) + (this.instructions.value.trim().length > 120 ? '...' : '');
+            const confirmText = `A recipe with the same title already exists.\n\n${existingText}\n\nYour Recipe:\nIngredients: ${currentIngredients}\nInstructions: ${currentInstructions}\n\nSave anyway?`;
+
+            if (!confirm(confirmText)) {
+                return;
+            }
+        }
 
         if (this.currentEditingId) {
             this.recipeManager.updateRecipe(this.currentEditingId, recipeData);
@@ -206,19 +318,254 @@ class UIManager {
         }
     }
 
+    shareRecipe() {
+        const recipe = this.recipeManager.getRecipe(this.currentEditingId);
+        if (!recipe) return;
+
+        const ingredients = recipe.ingredients
+            .split('\n')
+            .filter(i => i.trim())
+            .map(i => `- ${i.trim()}`)
+            .join('\n');
+
+        const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
+        const shareText = `Recipe: ${recipe.name}\n` +
+            `Dish Type: ${this.capitalizeLabel(recipe.dishType || 'breakfast')}\n` +
+            `Type: ${recipe.vegetarian ? 'Vegetarian' : 'Non-vegetarian'}\n` +
+            `Difficulty: ${recipe.difficulty || 'Medium'}\n` +
+            `Servings: ${recipe.servings || 4}\n` +
+            `Prep Time: ${recipe.prepTime || 0} min\n` +
+            `Cook Time: ${recipe.cookTime || 0} min\n` +
+            `Total Time: ${totalTime} min\n\n` +
+            `Ingredients:\n${ingredients}\n\n` +
+            `Instructions:\n${recipe.instructions}`;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(shareText)
+                .then(() => alert('Recipe copied to clipboard. Share it with others!'))
+                .catch(() => this.fallbackShare(shareText));
+        } else {
+            this.fallbackShare(shareText);
+        }
+    }
+
+    fallbackShare(text) {
+        prompt('Copy the recipe text below and share it with others:', text);
+    }
+
+    openImportModal() {
+        this.importText.value = '';
+        this.importModal.classList.add('active');
+    }
+
+    handlePhotoUpload(e) {
+        const file = e.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            this.currentPhotoData = reader.result;
+            if (this.photoPreview) {
+                this.photoPreview.innerHTML = `<img src="${reader.result}" alt="Recipe photo preview">`;
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    showFormError(message) {
+        if (this.formError) {
+            this.formError.textContent = message;
+            this.formError.style.display = 'block';
+        } else {
+            alert(message);
+        }
+    }
+
+    clearFormError() {
+        if (this.formError) {
+            this.formError.textContent = '';
+            this.formError.style.display = 'none';
+        }
+    }
+
+    closeImportModal() {
+        this.importModal.classList.remove('active');
+    }
+
+    handleImportRecipe() {
+        const importText = this.importText.value.trim();
+        if (!importText) {
+            alert('Please paste the shared recipe text to import.');
+            return;
+        }
+
+        const recipeData = this.parseSharedRecipeText(importText);
+        if (!recipeData) {
+            alert('Unable to parse the recipe. Make sure it uses the same shared format.');
+            return;
+        }
+
+        recipeData.source = 'shared';
+        const duplicateLocal = this.recipeManager.findDuplicateRecipe(recipeData);
+        if (duplicateLocal && duplicateLocal.source !== 'shared') {
+            alert('This shared recipe is exactly the same as one of your own recipes and cannot be imported.');
+            return;
+        }
+
+        this.recipeManager.addRecipe(recipeData);
+        this.closeImportModal();
+        this.render();
+        alert('Recipe imported successfully!');
+    }
+
+    generateRecipePhoto() {
+        const query = this.recipeName.value.trim() || 'food';
+        const encodedQuery = encodeURIComponent(`${query} recipe`);
+        const url = `https://source.unsplash.com/featured/600x400?${encodedQuery}`;
+        this.currentPhotoData = url;
+        if (this.photoPreview) {
+            this.photoPreview.innerHTML = `<img src="${url}" alt="Generated recipe photo">`;
+        }
+    }
+
+    parseSharedRecipeText(text) {
+        const lines = text.split(/\r?\n/).map(line => line.trim());
+        const recipe = {
+            name: '',
+            ingredients: [],
+            instructions: [],
+            prepTime: 0,
+            cookTime: 0,
+            servings: 4,
+            difficulty: 'medium',
+            dishType: 'breakfast',
+            vegetarian: false
+        };
+
+        let section = null;
+        for (const line of lines) {
+            if (!line) continue;
+
+            const recipeMatch = line.match(/^Recipe:\s*(.+)$/i);
+            const dishTypeMatch = line.match(/^Dish\s*Type:\s*(.+)$/i);
+            const typeMatch = line.match(/^Type:\s*(.+)$/i);
+            const difficultyMatch = line.match(/^Difficulty:\s*(.+)$/i);
+            const servingsMatch = line.match(/^Servings:\s*(\d+)/i);
+            const prepMatch = line.match(/^Prep Time:\s*(\d+)/i);
+            const cookMatch = line.match(/^Cook Time:\s*(\d+)/i);
+            const ingredientsStart = line.match(/^Ingredients:\s*$/i);
+            const instructionsStart = line.match(/^Instructions:\s*$/i);
+            const ingredientItem = line.match(/^[-•]\s*(.+)$/);
+
+            if (recipeMatch) {
+                recipe.name = recipeMatch[1].trim();
+                section = null;
+                continue;
+            }
+            if (dishTypeMatch) {
+                recipe.dishType = dishTypeMatch[1].trim().toLowerCase();
+                section = null;
+                continue;
+            }
+            if (typeMatch) {
+                const typeValue = typeMatch[1].trim().toLowerCase();
+                if (/(breakfast|lunch|dinner|snack|dessert|brunch|supper|other)/i.test(typeValue)) {
+                    recipe.dishType = typeValue;
+                }
+                if (typeValue.includes('veget')) {
+                    recipe.vegetarian = true;
+                }
+                if (typeValue.includes('non')) {
+                    recipe.vegetarian = false;
+                }
+                section = null;
+                continue;
+            }
+            if (difficultyMatch) {
+                recipe.difficulty = difficultyMatch[1].trim().toLowerCase();
+                section = null;
+                continue;
+            }
+            if (servingsMatch) {
+                recipe.servings = parseInt(servingsMatch[1], 10) || 4;
+                section = null;
+                continue;
+            }
+            if (prepMatch) {
+                recipe.prepTime = parseInt(prepMatch[1], 10) || 0;
+                section = null;
+                continue;
+            }
+            if (cookMatch) {
+                recipe.cookTime = parseInt(cookMatch[1], 10) || 0;
+                section = null;
+                continue;
+            }
+            if (ingredientsStart) {
+                section = 'ingredients';
+                continue;
+            }
+            if (instructionsStart) {
+                section = 'instructions';
+                continue;
+            }
+            if (section === 'ingredients' && ingredientItem) {
+                recipe.ingredients.push(ingredientItem[1].trim());
+                continue;
+            }
+            if (section === 'instructions') {
+                recipe.instructions.push(line);
+                continue;
+            }
+        }
+
+        if (!recipe.name || recipe.ingredients.length === 0 || recipe.instructions.length === 0) {
+            return null;
+        }
+
+        return {
+            name: recipe.name,
+            ingredients: recipe.ingredients.join('\n'),
+            instructions: recipe.instructions.join('\n'),
+            prepTime: recipe.prepTime,
+            cookTime: recipe.cookTime,
+            servings: recipe.servings,
+            difficulty: recipe.difficulty,
+            vegetarian: recipe.vegetarian,
+            source: 'shared'
+        };
+    }
+
     render(searchQuery = '') {
         const recipes = searchQuery
             ? this.recipeManager.searchRecipes(searchQuery)
             : this.recipeManager.getAllRecipes();
 
-        if (recipes.length === 0) {
-            this.recipesList.innerHTML = '<p class="empty-state">No recipes found. Try adding one!</p>';
+        const filteredRecipes = recipes.filter(recipe => {
+            if (this.pageMode === 'shared') {
+                return recipe.source === 'shared';
+            }
+            return recipe.source !== 'shared';
+        });
+
+        if (filteredRecipes.length === 0) {
+            const emptyText = this.pageMode === 'shared'
+                ? 'No shared recipes found. Import one to get started!'
+                : 'No recipes found. Add one to get started!';
+            this.recipesList.innerHTML = `<p class="empty-state">${emptyText}</p>`;
             return;
         }
 
-        this.recipesList.innerHTML = recipes
-            .map(recipe => this.createRecipeCard(recipe))
-            .join('');
+        const recipeCards = filteredRecipes.map(recipe => this.createRecipeCard(recipe)).join('');
+        this.recipesList.innerHTML = `
+            <section class="recipe-section">
+                <div class="recipes-grid">
+                    ${recipeCards}
+                </div>
+            </section>
+        `;
 
         // Attach click handlers to recipe cards
         document.querySelectorAll('.recipe-card').forEach(card => {
@@ -231,12 +578,28 @@ class UIManager {
     createRecipeCard(recipe) {
         const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
         const timeDisplay = totalTime > 0 ? `${totalTime} min` : 'N/A';
+        const statusIcon = recipe.vegetarian ? '🥬' : '🔥';
+        const statusLabel = recipe.vegetarian ? 'Vegetarian' : 'Non-vegetarian';
+        const statusClass = recipe.vegetarian ? 'vegetarian' : 'non-vegetarian';
+        const sourceBadge = recipe.source === 'shared' ? '<span class="recipe-badge">Shared</span>' : '';
+        const dishTypeBadge = recipe.dishType ? `<span class="recipe-badge recipe-type-badge">${this.escapeHtml(this.capitalizeLabel(recipe.dishType))}</span>` : '';
+        const photoMarkup = recipe.photo
+            ? `<div class="recipe-card-image"><img src="${recipe.photo}" alt="${this.escapeHtml(recipe.name)}"></div>`
+            : '';
 
         return `
             <div class="recipe-card" data-id="${recipe.id}">
+                ${photoMarkup}
                 <div class="recipe-card-header">
-                    <h3>${this.escapeHtml(recipe.name)}</h3>
-                    <span class="recipe-difficulty">${recipe.difficulty || 'Medium'}</span>
+                    <div class="recipe-card-title-group">
+                        <div class="recipe-card-title-row">
+                            <h3>${this.escapeHtml(recipe.name)}</h3>
+                            ${sourceBadge}
+                        </div>
+                        <span class="recipe-difficulty">${recipe.difficulty || 'Medium'}</span>
+                        ${dishTypeBadge}
+                    </div>
+                    <span class="recipe-status ${statusClass}" title="${statusLabel}">${statusIcon}</span>
                 </div>
                 <div class="recipe-card-body">
                     <div class="recipe-info">
@@ -275,13 +638,18 @@ class UIManager {
             .join('');
 
         const totalTime = (recipe.prepTime || 0) + (recipe.cookTime || 0);
+        const detailPhotoSection = recipe.photo
+            ? `<div class="detail-photo"><img src="${recipe.photo}" alt="${this.escapeHtml(recipe.name)}"></div>`
+            : '';
 
         this.detailContent.innerHTML = `
+            ${detailPhotoSection}
             <div class="detail-info-grid">
                 ${recipe.prepTime ? `<div class="detail-info-box"><strong>Prep Time</strong>${recipe.prepTime} min</div>` : ''}
                 ${recipe.cookTime ? `<div class="detail-info-box"><strong>Cook Time</strong>${recipe.cookTime} min</div>` : ''}
                 ${totalTime > 0 ? `<div class="detail-info-box"><strong>Total Time</strong>${totalTime} min</div>` : ''}
                 <div class="detail-info-box"><strong>Servings</strong>${recipe.servings || 4}</div>
+                <div class="detail-info-box"><strong>Dish Type</strong>${this.escapeHtml(this.capitalizeLabel(recipe.dishType || 'breakfast'))}</div>
                 <div class="detail-info-box"><strong>Difficulty</strong>${recipe.difficulty || 'Medium'}</div>
             </div>
 
@@ -305,6 +673,10 @@ class UIManager {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    capitalizeLabel(label) {
+        return String(label || '').replace(/\b(\w)/g, char => char.toUpperCase());
     }
 }
 
