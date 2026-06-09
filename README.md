@@ -62,3 +62,8 @@ cooking-recipes/
 ## License
 
 MIT License - feel free to use this project however you like!
+
+## AI Disclosure
+Initial design concepts and layouts were generated with Claude Haiku 4.5. 
+The frontend code and base styling were drafted using AI assistance.
+Final debugging and site organization were completed by hand.
