@@ -282,12 +282,14 @@ class UIManager {
 
     openEditModal() {
         if (!this.currentEditingId) return;
-        const recipe = this.recipeManager.getRecipe(this.currentEditingId);
+        const recipeId = this.currentEditingId;
+        const recipe = this.recipeManager.getRecipe(recipeId);
         if (recipe) {
             this.modalTitle.textContent = 'Edit Recipe';
             this.submitRecipeBtn.textContent = 'Save Changes';
             this.populateForm(recipe);
             this.closeDetailModal();
+            this.currentEditingId = recipeId; // restore the edit id after closing detail
             this.recipeModal.classList.add('active');
         }
     }
