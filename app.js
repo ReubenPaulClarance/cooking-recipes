@@ -18,7 +18,9 @@ class RecipeManager {
         const newRecipe = {
             id: Date.now(),
             ...recipe,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            ratings: [],
+            comments: []
         };
         this.recipes.push(newRecipe);
         this.saveRecipes();
@@ -50,6 +52,68 @@ class RecipeManager {
             recipe.name.toLowerCase().includes(lowerQuery) ||
             recipe.ingredients.toLowerCase().includes(lowerQuery)
         );
+    }
+
+    filterRecipes(recipes, vegetarianFilter = '', dishTypeFilter = '') {
+        return recipes.filter(recipe => {
+            // Filter by vegetarian status
+            if (vegetarianFilter) {
+                if (vegetarianFilter === 'vegetarian' && !recipe.vegetarian) {
+                    return false;
+                }
+                if (vegetarianFilter === 'non-vegetarian' && recipe.vegetarian) {
+                    return false;
+                }
+            }
+
+            // Filter by dish type
+            if (dishTypeFilter && recipe.dishType !== dishTypeFilter) {
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    addRating(recipeId, rating) {
+        const recipe = this.getRecipe(recipeId);
+        if (recipe) {
+            if (!recipe.ratings) {
+                recipe.ratings = [];
+            }
+            recipe.ratings.push({
+                value: rating,
+                timestamp: new Date().toISOString()
+            });
+            this.saveRecipes();
+            return recipe;
+        }
+        return null;
+    }
+
+    addComment(recipeId, comment) {
+        const recipe = this.getRecipe(recipeId);
+        if (recipe) {
+            if (!recipe.comments) {
+                recipe.comments = [];
+            }
+            recipe.comments.push({
+                text: comment,
+                timestamp: new Date().toISOString()
+            });
+            this.saveRecipes();
+            return recipe;
+        }
+        return null;
+    }
+
+    getAverageRating(recipeId) {
+        const recipe = this.getRecipe(recipeId);
+        if (!recipe || !recipe.ratings || recipe.ratings.length === 0) {
+            return 0;
+        }
+        const sum = recipe.ratings.reduce((acc, r) => acc + (r.value || 0), 0);
+        return (sum / recipe.ratings.length).toFixed(1);
     }
 
     normalizeText(text) {
@@ -92,6 +156,9 @@ class UIManager {
         this.currentEditingId = null;
         this.currentPhotoData = '';
         this.pageMode = document.body.dataset.page || 'local';
+        this.currentSearchQuery = '';
+        this.currentVegetarianFilter = '';
+        this.currentDishTypeFilter = '';
         this.initializeElements();
         this.attachEventListeners();
         this.render();
@@ -130,7 +197,6 @@ class UIManager {
         this.dishType = document.getElementById('dishType');
         this.vegetarian = document.getElementById('vegetarian');
         this.recipePhoto = document.getElementById('recipePhoto');
-        this.generatePhotoBtn = document.getElementById('generatePhotoBtn');
         this.photoPreview = document.getElementById('photoPreview');
         this.formError = document.getElementById('formError');
 
@@ -139,11 +205,19 @@ class UIManager {
         this.recipesList = document.getElementById('recipesList');
         this.recipePhoto = document.getElementById('recipePhoto');
         this.photoPreview = document.getElementById('photoPreview');
+        this.vegetarianFilter = document.getElementById('vegetarianFilter');
+        this.dishTypeFilter = document.getElementById('dishTypeFilter');
 
         // Modal titles
         this.modalTitle = document.getElementById('modalTitle');
         this.detailTitle = document.getElementById('detailTitle');
         this.detailContent = document.getElementById('detailContent');
+
+        // Rating and comment elements
+        this.ratingSection = document.getElementById('ratingSection');
+        this.commentSection = document.getElementById('commentSection');
+        this.commentText = document.getElementById('commentText');
+        this.submitCommentBtn = document.getElementById('submitCommentBtn');
     }
 
     attachEventListeners() {
@@ -162,6 +236,14 @@ class UIManager {
         // Search
         this.searchInput.addEventListener('input', (e) => this.handleSearch(e));
 
+        // Filters
+        if (this.vegetarianFilter) {
+            this.vegetarianFilter.addEventListener('change', (e) => this.handleFilterChange(e));
+        }
+        if (this.dishTypeFilter) {
+            this.dishTypeFilter.addEventListener('change', (e) => this.handleFilterChange(e));
+        }
+
         // Edit, Share, and Import
         this.editRecipeBtn.addEventListener('click', () => this.openEditModal());
         this.shareRecipeBtn.addEventListener('click', () => this.shareRecipe());
@@ -172,12 +254,14 @@ class UIManager {
         if (this.recipePhoto) {
             this.recipePhoto.addEventListener('change', (e) => this.handlePhotoUpload(e));
         }
-        if (this.generatePhotoBtn) {
-            this.generatePhotoBtn.addEventListener('click', () => this.generateRecipePhoto());
-        }
         this.closeImportBtn.addEventListener('click', () => this.closeImportModal());
         this.cancelImportBtn.addEventListener('click', () => this.closeImportModal());
         this.importRecipeSubmitBtn.addEventListener('click', () => this.handleImportRecipe());
+
+        // Rating and comment listeners
+        if (this.submitCommentBtn) {
+            this.submitCommentBtn.addEventListener('click', () => this.handleAddComment());
+        }
 
         // Close modals when clicking outside
         window.addEventListener('click', (e) => {
@@ -307,7 +391,17 @@ class UIManager {
 
     handleSearch(e) {
         const query = e.target.value;
-        this.render(query);
+        this.currentSearchQuery = query;
+        this.render();
+    }
+
+    handleFilterChange(e) {
+        if (e.target === this.vegetarianFilter) {
+            this.currentVegetarianFilter = e.target.value;
+        } else if (e.target === this.dishTypeFilter) {
+            this.currentDishTypeFilter = e.target.value;
+        }
+        this.render();
     }
 
     handleDelete() {
@@ -316,6 +410,24 @@ class UIManager {
             this.closeDetailModal();
             this.render();
         }
+    }
+
+    handleAddRating(rating) {
+        if (!this.currentEditingId) return;
+        this.recipeManager.addRating(this.currentEditingId, rating);
+        this.showRecipeDetail(this.currentEditingId);
+    }
+
+    handleAddComment() {
+        if (!this.currentEditingId || !this.commentText) return;
+        const comment = this.commentText.value.trim();
+        if (!comment) {
+            alert('Please enter a comment');
+            return;
+        }
+        this.recipeManager.addComment(this.currentEditingId, comment);
+        this.commentText.value = '';
+        this.showRecipeDetail(this.currentEditingId);
     }
 
     shareRecipe() {
@@ -418,16 +530,6 @@ class UIManager {
         this.closeImportModal();
         this.render();
         alert('Recipe imported successfully!');
-    }
-
-    generateRecipePhoto() {
-        const query = this.recipeName.value.trim() || 'food';
-        const encodedQuery = encodeURIComponent(`${query} recipe`);
-        const url = `https://source.unsplash.com/featured/600x400?${encodedQuery}`;
-        this.currentPhotoData = url;
-        if (this.photoPreview) {
-            this.photoPreview.innerHTML = `<img src="${url}" alt="Generated recipe photo">`;
-        }
     }
 
     parseSharedRecipeText(text) {
@@ -539,11 +641,16 @@ class UIManager {
     }
 
     render(searchQuery = '') {
-        const recipes = searchQuery
-            ? this.recipeManager.searchRecipes(searchQuery)
+        const recipes = this.currentSearchQuery
+            ? this.recipeManager.searchRecipes(this.currentSearchQuery)
             : this.recipeManager.getAllRecipes();
 
-        const filteredRecipes = recipes.filter(recipe => {
+        // Apply filters
+        const filteredRecipes = this.recipeManager.filterRecipes(
+            recipes,
+            this.currentVegetarianFilter,
+            this.currentDishTypeFilter
+        ).filter(recipe => {
             if (this.pageMode === 'shared') {
                 return recipe.source === 'shared';
             }
@@ -586,6 +693,10 @@ class UIManager {
         const photoMarkup = recipe.photo
             ? `<div class="recipe-card-image"><img src="${recipe.photo}" alt="${this.escapeHtml(recipe.name)}"></div>`
             : '';
+        
+        const averageRating = this.recipeManager.getAverageRating(recipe.id);
+        const ratingCount = recipe.ratings ? recipe.ratings.length : 0;
+        const ratingBadge = ratingCount > 0 ? `<span class="recipe-badge rating-badge">⭐ ${averageRating}</span>` : '';
 
         return `
             <div class="recipe-card" data-id="${recipe.id}">
@@ -598,6 +709,7 @@ class UIManager {
                         </div>
                         <span class="recipe-difficulty">${recipe.difficulty || 'Medium'}</span>
                         ${dishTypeBadge}
+                        ${ratingBadge}
                     </div>
                     <span class="recipe-status ${statusClass}" title="${statusLabel}">${statusIcon}</span>
                 </div>
@@ -642,6 +754,24 @@ class UIManager {
             ? `<div class="detail-photo"><img src="${recipe.photo}" alt="${this.escapeHtml(recipe.name)}"></div>`
             : '';
 
+        // Generate star rating buttons
+        let ratingButtonsHtml = '';
+        for (let i = 1; i <= 5; i++) {
+            ratingButtonsHtml += `<button class="star-btn" onclick="window.__ratingHandler && window.__ratingHandler(${i})" title="${i} star${i > 1 ? 's' : ''}">${'⭐'.repeat(i)}</button>`;
+        }
+
+        // Generate comments display
+        const commentsHtml = (recipe.comments && recipe.comments.length > 0)
+            ? recipe.comments.map((c, idx) => {
+                const date = new Date(c.timestamp).toLocaleDateString();
+                return `<div class="comment-item"><strong>Comment ${idx + 1}</strong> (${date})<p>${this.escapeHtml(c.text)}</p></div>`;
+            }).join('')
+            : '<p class="no-comments">No comments yet. Be the first to comment!</p>';
+
+        const averageRating = this.recipeManager.getAverageRating(id);
+        const ratingCount = recipe.ratings ? recipe.ratings.length : 0;
+        const ratingDisplay = ratingCount > 0 ? `<div class="rating-display">⭐ ${averageRating} / 5 (${ratingCount} rating${ratingCount > 1 ? 's' : ''})</div>` : '<div class="rating-display no-rating">No ratings yet</div>';
+
         this.detailContent.innerHTML = `
             ${detailPhotoSection}
             <div class="detail-info-grid">
@@ -664,7 +794,36 @@ class UIManager {
                 <h3>👨‍🍳 Instructions</h3>
                 <p>${this.escapeHtml(recipe.instructions)}</p>
             </div>
+
+            <div class="detail-section rating-section">
+                <h3>⭐ Rating</h3>
+                ${ratingDisplay}
+                <div class="rating-buttons">
+                    ${ratingButtonsHtml}
+                </div>
+            </div>
+
+            <div class="detail-section comment-section">
+                <h3>💬 Comments</h3>
+                <div class="comments-list">
+                    ${commentsHtml}
+                </div>
+                <div class="comment-form">
+                    <textarea id="commentText" class="comment-input" placeholder="Leave a comment about this recipe..."></textarea>
+                    <button id="submitCommentBtn" class="btn btn-primary">Add Comment</button>
+                </div>
+            </div>
         `;
+
+        // Store rating handler for onclick
+        window.__ratingHandler = (rating) => this.handleAddRating(rating);
+
+        // Re-initialize comment elements after innerHTML change
+        this.commentText = document.getElementById('commentText');
+        this.submitCommentBtn = document.getElementById('submitCommentBtn');
+        if (this.submitCommentBtn) {
+            this.submitCommentBtn.addEventListener('click', () => this.handleAddComment());
+        }
 
         this.detailModal.classList.add('active');
     }

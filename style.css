@@ -14,12 +14,19 @@
     --text-light: #7f8c8d;
 }
 
+html,
+body {
+    min-height: 100%;
+    overflow-x: hidden;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: #e8d2b3;
     min-height: 100vh;
     color: var(--text-dark);
     padding: 20px;
+    overflow-y: auto;
 }
 
 .container {
@@ -145,6 +152,9 @@ header h1 {
     grid-auto-flow: row;
     gap: 20px;
     animation: slideUp 0.6s ease-out 0.3s backwards;
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+    padding-right: 8px;
 }
 
 .recipe-card {
