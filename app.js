@@ -351,31 +351,34 @@ class UIManager {
             source: 'local'
         };
 
-        const existingExactMatch = this.recipeManager.findDuplicateRecipe(recipeData, this.currentEditingId);
-        if (existingExactMatch) {
-            this.showFormError('A recipe with the same name and ingredients already exists.');
-            return;
-        }
-
-        const titleMatches = this.recipeManager.findRecipesByTitle(recipeData.name, this.currentEditingId);
-        const distinctTitleMatches = titleMatches.filter(recipe => !this.recipeManager.isSameRecipe(recipe, recipeData));
-        if (titleMatches.length > 0 && distinctTitleMatches.length === 0) {
-            this.showFormError('A recipe with the same title and ingredients already exists.');
-            return;
-        }
-
-        if (distinctTitleMatches.length > 0) {
-            const existingText = distinctTitleMatches.map((recipe, index) => {
-                const ingredients = recipe.ingredients.split('\n').map(i => i.trim()).filter(Boolean).join(', ');
-                return `Existing Recipe ${index + 1}:\nIngredients: ${ingredients}\nInstructions: ${recipe.instructions.trim().slice(0, 120)}${recipe.instructions.length > 120 ? '...' : ''}`;
-            }).join('\n\n');
-
-            const currentIngredients = this.ingredients.value.split('\n').map(i => i.trim()).filter(Boolean).join(', ');
-            const currentInstructions = this.instructions.value.trim().slice(0, 120) + (this.instructions.value.trim().length > 120 ? '...' : '');
-            const confirmText = `A recipe with the same title already exists.\n\n${existingText}\n\nYour Recipe:\nIngredients: ${currentIngredients}\nInstructions: ${currentInstructions}\n\nSave anyway?`;
-
-            if (!confirm(confirmText)) {
+        // Only check for duplicates when adding new recipes, not when editing
+        if (!this.currentEditingId) {
+            const existingExactMatch = this.recipeManager.findDuplicateRecipe(recipeData, this.currentEditingId);
+            if (existingExactMatch) {
+                this.showFormError('A recipe with the same name and ingredients already exists.');
                 return;
+            }
+
+            const titleMatches = this.recipeManager.findRecipesByTitle(recipeData.name, this.currentEditingId);
+            const distinctTitleMatches = titleMatches.filter(recipe => !this.recipeManager.isSameRecipe(recipe, recipeData));
+            if (titleMatches.length > 0 && distinctTitleMatches.length === 0) {
+                this.showFormError('A recipe with the same title and ingredients already exists.');
+                return;
+            }
+
+            if (distinctTitleMatches.length > 0) {
+                const existingText = distinctTitleMatches.map((recipe, index) => {
+                    const ingredients = recipe.ingredients.split('\n').map(i => i.trim()).filter(Boolean).join(', ');
+                    return `Existing Recipe ${index + 1}:\nIngredients: ${ingredients}\nInstructions: ${recipe.instructions.trim().slice(0, 120)}${recipe.instructions.length > 120 ? '...' : ''}`;
+                }).join('\n\n');
+
+                const currentIngredients = this.ingredients.value.split('\n').map(i => i.trim()).filter(Boolean).join(', ');
+                const currentInstructions = this.instructions.value.trim().slice(0, 120) + (this.instructions.value.trim().length > 120 ? '...' : '');
+                const confirmText = `A recipe with the same title already exists.\n\n${existingText}\n\nYour Recipe:\nIngredients: ${currentIngredients}\nInstructions: ${currentInstructions}\n\nSave anyway?`;
+
+                if (!confirm(confirmText)) {
+                    return;
+                }
             }
         }
 
