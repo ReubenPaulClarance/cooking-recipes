@@ -362,13 +362,6 @@ class UIManager {
             return;
         }
 
-        // Only check for duplicates when adding new recipes
-        const existingExactMatch = this.recipeManager.findDuplicateRecipe(recipeData);
-        if (existingExactMatch) {
-            this.showFormError('A recipe with the same name and ingredients already exists.');
-            return;
-        }
-
         const titleMatches = this.recipeManager.findRecipesByTitle(recipeData.name);
         const distinctTitleMatches = titleMatches.filter(recipe => !this.recipeManager.isSameRecipe(recipe, recipeData));
         if (titleMatches.length > 0 && distinctTitleMatches.length === 0) {
