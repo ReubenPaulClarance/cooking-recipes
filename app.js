@@ -199,6 +199,7 @@ class UIManager {
         this.recipePhoto = document.getElementById('recipePhoto');
         this.photoPreview = document.getElementById('photoPreview');
         this.formError = document.getElementById('formError');
+        this.submitRecipeBtn = this.recipeForm.querySelector('button[type="submit"]');
 
         // Search
         this.searchInput = document.getElementById('searchInput');
@@ -274,6 +275,7 @@ class UIManager {
     openAddModal() {
         this.currentEditingId = null;
         this.modalTitle.textContent = 'Add New Recipe';
+        this.submitRecipeBtn.textContent = 'Save Recipe';
         this.resetForm();
         this.recipeModal.classList.add('active');
     }
@@ -283,6 +285,7 @@ class UIManager {
         const recipe = this.recipeManager.getRecipe(this.currentEditingId);
         if (recipe) {
             this.modalTitle.textContent = 'Edit Recipe';
+            this.submitRecipeBtn.textContent = 'Save Changes';
             this.populateForm(recipe);
             this.closeDetailModal();
             this.recipeModal.classList.add('active');
