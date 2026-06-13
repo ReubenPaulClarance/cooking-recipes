@@ -197,9 +197,9 @@ class UIManager {
         this.dishType = document.getElementById('dishType');
         this.vegetarian = document.getElementById('vegetarian');
         this.recipePhoto = document.getElementById('recipePhoto');
+        this.generatePhotoBtn = document.getElementById('generatePhotoBtn');
         this.photoPreview = document.getElementById('photoPreview');
         this.formError = document.getElementById('formError');
-        this.submitRecipeBtn = this.recipeForm.querySelector('button[type="submit"]');
 
         // Search
         this.searchInput = document.getElementById('searchInput');
@@ -255,6 +255,9 @@ class UIManager {
         if (this.recipePhoto) {
             this.recipePhoto.addEventListener('change', (e) => this.handlePhotoUpload(e));
         }
+        if (this.generatePhotoBtn) {
+            this.generatePhotoBtn.addEventListener('click', () => this.generateRecipePhoto());
+        }
         this.closeImportBtn.addEventListener('click', () => this.closeImportModal());
         this.cancelImportBtn.addEventListener('click', () => this.closeImportModal());
         this.importRecipeSubmitBtn.addEventListener('click', () => this.handleImportRecipe());
@@ -275,21 +278,17 @@ class UIManager {
     openAddModal() {
         this.currentEditingId = null;
         this.modalTitle.textContent = 'Add New Recipe';
-        this.submitRecipeBtn.textContent = 'Save Recipe';
         this.resetForm();
         this.recipeModal.classList.add('active');
     }
 
     openEditModal() {
         if (!this.currentEditingId) return;
-        const recipeId = this.currentEditingId;
-        const recipe = this.recipeManager.getRecipe(recipeId);
+        const recipe = this.recipeManager.getRecipe(this.currentEditingId);
         if (recipe) {
             this.modalTitle.textContent = 'Edit Recipe';
-            this.submitRecipeBtn.textContent = 'Save Changes';
             this.populateForm(recipe);
             this.closeDetailModal();
-            this.currentEditingId = recipeId; // restore the edit id after closing detail
             this.recipeModal.classList.add('active');
         }
     }
@@ -356,37 +355,43 @@ class UIManager {
             source: 'local'
         };
 
-        // Skip all validation when editing - just save changes
-        if (this.currentEditingId) {
-            this.recipeManager.updateRecipe(this.currentEditingId, recipeData);
-            this.closeModal();
-            this.render();
-            return;
-        }
-
-        const titleMatches = this.recipeManager.findRecipesByTitle(recipeData.name);
-        const distinctTitleMatches = titleMatches.filter(recipe => !this.recipeManager.isSameRecipe(recipe, recipeData));
-        if (titleMatches.length > 0 && distinctTitleMatches.length === 0) {
-            this.showFormError('A recipe with the same title and ingredients already exists.');
-            return;
-        }
-
-        if (distinctTitleMatches.length > 0) {
-            const existingText = distinctTitleMatches.map((recipe, index) => {
-                const ingredients = recipe.ingredients.split('\n').map(i => i.trim()).filter(Boolean).join(', ');
-                return `Existing Recipe ${index + 1}:\nIngredients: ${ingredients}\nInstructions: ${recipe.instructions.trim().slice(0, 120)}${recipe.instructions.length > 120 ? '...' : ''}`;
-            }).join('\n\n');
-
-            const currentIngredients = this.ingredients.value.split('\n').map(i => i.trim()).filter(Boolean).join(', ');
-            const currentInstructions = this.instructions.value.trim().slice(0, 120) + (this.instructions.value.trim().length > 120 ? '...' : '');
-            const confirmText = `A recipe with the same title already exists.\n\n${existingText}\n\nYour Recipe:\nIngredients: ${currentIngredients}\nInstructions: ${currentInstructions}\n\nSave anyway?`;
-
-            if (!confirm(confirmText)) {
+        // Only check for duplicates if creating a new recipe, not when editing
+        if (!this.currentEditingId) {
+            const existingExactMatch = this.recipeManager.findDuplicateRecipe(recipeData);
+            if (existingExactMatch) {
+                this.showFormError('A recipe with the same name and ingredients already exists.');
                 return;
+            }
+
+            const titleMatches = this.recipeManager.findRecipesByTitle(recipeData.name);
+            const distinctTitleMatches = titleMatches.filter(recipe => !this.recipeManager.isSameRecipe(recipe, recipeData));
+            if (titleMatches.length > 0 && distinctTitleMatches.length === 0) {
+                this.showFormError('A recipe with the same title and ingredients already exists.');
+                return;
+            }
+
+            if (distinctTitleMatches.length > 0) {
+                const existingText = distinctTitleMatches.map((recipe, index) => {
+                    const ingredients = recipe.ingredients.split('\n').map(i => i.trim()).filter(Boolean).join(', ');
+                    return `Existing Recipe ${index + 1}:\nIngredients: ${ingredients}\nInstructions: ${recipe.instructions.trim().slice(0, 120)}${recipe.instructions.length > 120 ? '...' : ''}`;
+                }).join('\n\n');
+
+                const currentIngredients = this.ingredients.value.split('\n').map(i => i.trim()).filter(Boolean).join(', ');
+                const currentInstructions = this.instructions.value.trim().slice(0, 120) + (this.instructions.value.trim().length > 120 ? '...' : '');
+                const confirmText = `A recipe with the same title already exists.\n\n${existingText}\n\nYour Recipe:\nIngredients: ${currentIngredients}\nInstructions: ${currentInstructions}\n\nSave anyway?`;
+
+                if (!confirm(confirmText)) {
+                    return;
+                }
             }
         }
 
-        this.recipeManager.addRecipe(recipeData);
+        if (this.currentEditingId) {
+            this.recipeManager.updateRecipe(this.currentEditingId, recipeData);
+        } else {
+            this.recipeManager.addRecipe(recipeData);
+        }
+
         this.closeModal();
         this.render();
     }
@@ -532,6 +537,16 @@ class UIManager {
         this.closeImportModal();
         this.render();
         alert('Recipe imported successfully!');
+    }
+
+    generateRecipePhoto() {
+        const query = this.recipeName.value.trim() || 'food';
+        const encodedQuery = encodeURIComponent(`${query} recipe`);
+        const url = `https://source.unsplash.com/featured/600x400?${encodedQuery}`;
+        this.currentPhotoData = url;
+        if (this.photoPreview) {
+            this.photoPreview.innerHTML = `<img src="${url}" alt="Generated recipe photo">`;
+        }
     }
 
     parseSharedRecipeText(text) {

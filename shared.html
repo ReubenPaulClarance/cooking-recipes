@@ -14,11 +14,6 @@
             </div>
         </header>
 
-        <div class="action-section">
-            <a href="index.html" class="btn btn-secondary">← My Recipes</a>
-            <button id="importRecipeBtn" class="btn btn-primary">Import Shared Recipe</button>
-        </div>
-
         <div class="search-section">
             <input 
                 type="text" 
@@ -50,6 +45,11 @@
                     </select>
                 </div>
             </div>
+        </div>
+
+        <div class="action-section">
+            <a href="index.html" class="btn btn-secondary">← My Recipes</a>
+            <button id="importRecipeBtn" class="btn btn-primary">Import Shared Recipe</button>
         </div>
 
         <div id="recipesList" class="recipes-grid">
@@ -84,6 +84,7 @@
                 <div class="form-group">
                     <label for="recipePhoto">Recipe Photo</label>
                     <input type="file" id="recipePhoto" accept="image/*">
+                    <button type="button" class="btn btn-secondary" id="generatePhotoBtn">Get Photo for Me</button>
                     <div id="photoPreview" class="photo-preview"></div>
                 </div>
 
