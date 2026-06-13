@@ -16,7 +16,10 @@
 
 html,
 body {
+    height: 100%;
     min-height: 100%;
+    /* prevent outer page scrolling; enable scrolling inside recipe list */
+    overflow: hidden;
 }
 
 body {
@@ -230,8 +233,10 @@ header h1 {
     grid-auto-flow: row;
     gap: 12px;
     animation: slideUp 0.6s ease-out 0.3s backwards;
-    /* allow grid to size naturally; removed fixed max-height and internal scrolling */
-    padding-right: 8px;
+    /* enable internal scrolling while keeping the page itself non-scrollable */
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+    padding-right: 16px;
 }
 
 .recipe-card {
