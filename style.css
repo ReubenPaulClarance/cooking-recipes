@@ -16,10 +16,8 @@
 
 html,
 body {
-    height: 100%;
     min-height: 100%;
-    /* prevent outer page scrolling; enable scrolling inside recipe list */
-    overflow: hidden;
+    overflow-x: hidden;
 }
 
 body {
@@ -28,6 +26,7 @@ body {
     min-height: 100vh;
     color: var(--text-dark);
     padding: 20px;
+    overflow-y: auto;
 }
 
 .container {
@@ -39,7 +38,7 @@ body {
 header {
     text-align: center;
     color: white;
-    margin-bottom: 16px;
+    margin-bottom: 40px;
     animation: slideDown 0.6s ease-out;
 }
 
@@ -50,7 +49,7 @@ header h1 {
 }
 
 .banner {
-    margin: 0 auto 12px;
+    margin: 0 auto 30px;
     max-width: 900px;
 }
 
@@ -68,32 +67,8 @@ header h1 {
 
 /* Search Section */
 .search-section {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 10px;
+    margin-bottom: 30px;
     animation: slideUp 0.6s ease-out 0.1s backwards;
-}
-
-.search-main {
-    flex: 1 1 60%;
-}
-
-.filter-sidebar {
-    flex: 0 0 280px;
-    padding: 22px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(224, 224, 224, 0.9);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
-}
-
-.filter-header {
-    font-size: 1rem;
-    font-weight: 700;
-    margin-bottom: 16px;
-    color: var(--text-dark);
 }
 
 .search-bar {
@@ -115,14 +90,15 @@ header h1 {
 /* Filter Controls */
 .filter-controls {
     display: flex;
-    flex-direction: column;
-    gap: 18px;
+    gap: 15px;
+    margin-top: 15px;
+    flex-wrap: wrap;
     animation: slideUp 0.6s ease-out 0.15s backwards;
 }
 
 .filter-group {
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: 8px;
 }
 
@@ -229,14 +205,13 @@ header h1 {
 /* Recipes Grid */
 .recipes-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(220px, 1fr));
+    grid-template-columns: repeat(3, minmax(260px, 1fr));
     grid-auto-flow: row;
-    gap: 12px;
+    gap: 20px;
     animation: slideUp 0.6s ease-out 0.3s backwards;
-    /* enable internal scrolling while keeping the page itself non-scrollable */
-    max-height: calc(100vh - 180px);
+    max-height: calc(100vh - 300px);
     overflow-y: auto;
-    padding-right: 16px;
+    padding-right: 8px;
 }
 
 .recipe-card {
@@ -258,15 +233,15 @@ header h1 {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 12px;
+    gap: 18px;
     background: linear-gradient(135deg, #ff9e5d, #ffc28d);
     color: white;
-    padding: 16px;
+    padding: 24px;
 }
 
 .recipe-card-image img {
     width: 100%;
-    height: 140px;
+    height: 200px;
     object-fit: cover;
 }
 
@@ -276,7 +251,7 @@ header h1 {
 
 .photo-preview img {
     width: 100%;
-    max-height: 120px;
+    max-height: 180px;
     object-fit: cover;
     border-radius: 12px;
     border: 1px solid rgba(0, 0, 0, 0.08);
@@ -361,7 +336,7 @@ header h1 {
 }
 
 .recipe-card-body {
-    padding: 16px;
+    padding: 24px;
 }
 
 .recipe-info {
@@ -383,10 +358,10 @@ header h1 {
 
 .recipe-description {
     color: #3e3e3e;
-    line-height: 1.6;
-    margin-bottom: 12px;
-    min-height: 60px;
-    /* removed overflow to avoid clipping/scrolling */
+    line-height: 1.75;
+    margin-bottom: 18px;
+    min-height: 90px;
+    overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 4;
     line-clamp: 4;
@@ -446,7 +421,8 @@ header h1 {
     padding: 30px;
     max-width: 500px;
     width: 90%;
-    /* removed max-height and internal scrolling so modal content flows naturally */
+    max-height: 90vh;
+    overflow-y: auto;
     animation: slideUp 0.3s ease;
 }
 
@@ -639,16 +615,6 @@ textarea {
 @media (max-width: 768px) {
     header h1 {
         font-size: 2em;
-    }
-
-    .search-section {
-        flex-direction: column;
-    }
-
-    .filter-sidebar {
-        width: 100%;
-        flex: 1 1 auto;
-        padding: 18px;
     }
 
     .recipes-grid {
