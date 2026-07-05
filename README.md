@@ -1,14 +1,13 @@
 # Cooking Recipes Website
 
-A simple, elegant website for storing and managing your favorite cooking recipes.
+This website can be used to save, share and store websites. 
 
 ## Features
 
-- 📝 Add and store recipes
-- 🔍 Search recipes by name or ingredients
-- 💾 Save recipes locally in your browser
-- 📱 Responsive design works on all devices
-- 🎨 Clean and user-friendly interface
+- Add and store recipes
+- Recipes can be searched by name and category.  
+- Save recipes locally in your browser
+- Responsive design works on all devices
 
 ## Getting Started
 
