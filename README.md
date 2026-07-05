@@ -39,7 +39,7 @@ cooking-recipes/
 ## How to Use
 
 1. **Add a Recipe**: Click "Add Recipe" and fill in the recipe details
-2. **View Recipes**: All your recipes appear in the main list
+2. **View Recipes**: All your recipes appear in the main page. 
 3. **Search**: Use the search bar to find recipes by name or ingredients
 4. **Delete**: Remove recipes you no longer need
 
@@ -63,6 +63,4 @@ cooking-recipes/
 MIT License - feel free to use this project however you like!
 
 ## AI Disclosure
-Initial design concepts and layouts were generated with Claude Haiku 4.5. 
-The frontend code and base styling were drafted using AI assistance.
-Final debugging and site organization were completed by hand.
+I have used Haikue AI to create this website. 
